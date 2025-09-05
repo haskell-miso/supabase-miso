@@ -151,22 +151,8 @@ signUpEmail
   -- ^ Error case
   -> Effect parent model action
 signUpEmail args successful errorful = withSink $ \sink -> do
-  successful_ <-
-    syncCallback1 $ \result -> do
-      fromJSON <$> fromJSValUnchecked result >>= \case
-        Error msg -> do
-          consoleError "signUpEmail: Failed to parse JSON from supabase call, this is a bug"
-          sink $ errorful (ms msg)
-        Success result ->
-          sink (successful result)
-  errorful_ <-
-    syncCallback1 $ \result -> do
-      fromJSON <$> fromJSValUnchecked result >>= \case
-        Error msg -> do
-          consoleError "signUpEmail: Failed to parse JSON from supabase call, this is a bug"
-          sink $ errorful (ms msg)
-        Success result ->
-          sink (successful result)
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
   runSupabase "auth" "signUp" [args] successful_ errorful_
 -----------------------------------------------------------------------------
 signUpPhone
@@ -178,22 +164,8 @@ signUpPhone
   -- ^ Error case
   -> Effect parent model action
 signUpPhone args successful errorful = withSink $ \sink -> do
-  successful_ <-
-    syncCallback1 $ \result -> do
-      fromJSON <$> fromJSValUnchecked result >>= \case
-        Error msg -> do
-          consoleError "signUpPhone: Failed to parse JSON from supabase call, this is a bug"
-          sink $ errorful (ms msg)
-        Success result ->
-          sink (successful result)
-  errorful_ <-
-    syncCallback1 $ \result -> do
-      fromJSON <$> fromJSValUnchecked result >>= \case
-        Error msg -> do
-          consoleError "signUpPhone: Failed to parse JSON from supabase call, this is a bug"
-          sink $ errorful (ms msg)
-        Success result ->
-          sink (successful result)
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
   runSupabase "auth" "signUp" [args] successful_ errorful_
 -----------------------------------------------------------------------------
 data AuthResponse
