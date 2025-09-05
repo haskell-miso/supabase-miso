@@ -363,7 +363,5 @@ instance ToJSON Session where
     , "user"          .= sessionUser
     ]
 -----------------------------------------------------------------------------
-deriving instance FromJSONKey MisoString
-deriving instance ToJSONKey MisoString
 deriving instance Hashable MisoString
 -----------------------------------------------------------------------------

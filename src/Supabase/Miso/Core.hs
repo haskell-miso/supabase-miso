@@ -9,14 +9,16 @@
 module Supabase.Miso.Core
   ( -- * Functions
     runSupabase
+  , runSupabaseFrom
   , emptyArgs
   , successCallback
+  , successCallbackFile
   , errorCallback
   ) where
 -----------------------------------------------------------------------------
 import Data.Aeson
 import Miso.String
-import Miso.FFI (syncCallback1)
+import Miso.FFI (syncCallback1, File)
 -----------------------------------------------------------------------------
 import Control.Monad
 import Language.Javascript.JSaddle hiding (Success)
@@ -40,6 +42,27 @@ runSupabase namespace fnName args successful errorful = do
   void $ jsg "globalThis" # "runSupabase" $
     (namespace, fnName, args_, successful, errorful)
 -----------------------------------------------------------------------------
+-- | runSupabase('auth','signUp', args, successCallback, errorCallback);
+runSupabaseFrom
+  :: ToJSVal args
+  => MisoString
+  -- ^ Namespace
+  -> MisoString
+  -- ^ From
+  -> MisoString
+  -- ^ Method
+  -> [args]
+  -- ^ args
+  -> Function
+  -- ^ successful callback
+  -> Function
+  -- ^ errorful callback
+  -> JSM ()
+runSupabaseFrom namespace from fnName args successful errorful = do
+  args_ <- makeArgs args
+  void $ jsg "globalThis" # "runSupabaseFrom" $
+    (namespace, from, fnName, args_, successful, errorful)
+-----------------------------------------------------------------------------
 emptyArgs :: [JSVal]
 emptyArgs = []
 -----------------------------------------------------------------------------
@@ -56,6 +79,15 @@ successCallback sink errorful successful = do
         sink $ errorful (ms msg)
       Success result ->
         sink (successful result)
+-----------------------------------------------------------------------------
+successCallbackFile
+  :: (action -> JSM ())
+  -> (MisoString -> action)
+  -> (File -> action)
+  -> JSM Function
+successCallbackFile sink errorful successful = do
+  syncCallback1 $ \result -> do
+    fromJSValUnchecked result >>= sink . successful
 -----------------------------------------------------------------------------
 errorCallback
   :: (action -> JSM ())
