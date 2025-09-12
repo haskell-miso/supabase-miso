@@ -1,15 +1,12 @@
 -----------------------------------------------------------------------------
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeSynonymInstances       #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 -----------------------------------------------------------------------------
 module Supabase.Miso.Core
   ( -- * Functions
     runSupabase
   , runSupabaseFrom
+  , runSupabaseQuery
   , emptyArgs
   , successCallback
   , successCallbackFile
@@ -41,6 +38,26 @@ runSupabase namespace fnName args successful errorful = do
   args_ <- makeArgs args
   void $ jsg "globalThis" # "runSupabase" $
     (namespace, fnName, args_, successful, errorful)
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- | runSupabase('auth','signUp', args, successCallback, errorCallback);
+runSupabaseQuery
+  :: ToJSVal args
+  => MisoString
+  -- ^ From
+  -> MisoString
+  -- ^ Method
+  -> [args]
+  -- ^ args
+  -> Function
+  -- ^ successful callback
+  -> Function
+  -- ^ errorful callback
+  -> JSM ()
+runSupabaseQuery from fnName args successful errorful = do
+  args_ <- makeArgs args
+  void $ jsg "globalThis" # "runSupabaseQuery" $
+    (from, fnName, args_, successful, errorful)
 -----------------------------------------------------------------------------
 -- | runSupabase('auth','signUp', args, successCallback, errorCallback);
 runSupabaseFrom
