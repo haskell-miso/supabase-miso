@@ -1,4 +1,3 @@
-
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE MultilineStrings    #-}
