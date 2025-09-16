@@ -1,0 +1,4 @@
+{
+  "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
+  "haskell.formattingProvider": "brittany"
+}

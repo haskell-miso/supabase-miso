@@ -127,7 +127,7 @@ $ cabal build
 
 ### Database
 
-  - [ ] [Fetch data](https://supabase.com/docs/reference/javascript/select)
+  - [x] [Fetch data](https://supabase.com/docs/reference/javascript/select)
   - [ ] [Insert data](https://supabase.com/docs/reference/javascript/insert)
   - [ ] [Update data](https://supabase.com/docs/reference/javascript/update)
   - [ ] [Upsert data](https://supabase.com/docs/reference/javascript/upsert)

@@ -1,15 +1,6 @@
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE AllowAmbiguousTypes       #-}
-{-# LANGUAGE ScopedTypeVariables       #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE MultilineStrings          #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE TypeApplications          #-}
-{-# LANGUAGE MultilineStrings          #-}
-{-# LANGUAGE KindSignatures            #-}
-{-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE GADTs                     #-}
-{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE MultilineStrings    #-}
 module Main where
 
 import           Control.Monad

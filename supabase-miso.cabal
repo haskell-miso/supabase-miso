@@ -38,6 +38,8 @@ library
     Supabase.Miso.Storage
   default-language:
     Haskell2010
+  default-extensions:
+    GHC2024
 
 executable app
   import:
@@ -55,4 +57,4 @@ executable app
   default-language:
     Haskell2010
   default-extensions:
-    CPP TemplateHaskell
+    CPP TemplateHaskell GHC2024

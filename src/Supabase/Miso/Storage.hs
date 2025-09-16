@@ -1,16 +1,28 @@
 -----------------------------------------------------------------------------
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeSynonymInstances       #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 -----------------------------------------------------------------------------
 module Supabase.Miso.Storage
   ( -- * Functions
-    listBuckets
+    createBucket
+  , getBucket
+  , listBuckets
+  , updateBucket
+  , deleteBucket
+  , emptyBucket
+  , uploadFile
+  , downloadFile
   , listAllFiles
+  , replaceFile
+  , moveFile
+  , copyFile
+  , deleteFiles
+  , createSignedUrls
+  , createSignedUploadUrl
+  , uploadToSignedUrl
+  , getPublicUrl
     -- * Types
+  , BucketOptions(..)
   ) where
 -----------------------------------------------------------------------------
 import           Data.Hashable
@@ -350,4 +362,3 @@ getPublicUrl bucket fileName successful errorful = withSink $ \sink -> do
   fileName_ <- toJSVal fileName
   runSupabaseFrom "storage" bucket "getPublicUrl" [fileName_] successful_ errorful_
 -----------------------------------------------------------------------------
-
