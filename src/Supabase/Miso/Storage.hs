@@ -24,8 +24,17 @@ module Supabase.Miso.Storage
   , getPublicUrl
     -- * Types
   , BucketOptions(..)
+  , SortBy
+  , column
+  , order
+  , SearchOptions
+  , limit
+  , offset
+  , search 
+  , sortBy
   ) where
 -----------------------------------------------------------------------------
+import           Control.Applicative
 import           Data.Hashable
 import qualified Data.HashMap.Strict as H
 import           Data.HashMap.Strict (HashMap)
@@ -33,7 +42,7 @@ import           Data.Time
 import           Data.Aeson
 import           Control.Monad
 import           Language.Javascript.JSaddle hiding (Success)
-import           Miso hiding ((<#))
+import           Miso hiding ((<#), offset)
 import           Miso.FFI
 -----------------------------------------------------------------------------
 import           Supabase.Miso.Core
@@ -188,12 +197,67 @@ downloadFile bucket fileName opts successful errorful = withSink $ \sink -> do
   runSupabaseFrom "storage" bucket "download" [fileName_, opts_] successful_ errorful_
 -----------------------------------------------------------------------------
 -- | https://supabase.com/docs/reference/javascript/storage-from-list
+data SortBy = SortBy
+  { _column :: Maybe MisoString
+  , _order :: Maybe MisoString
+  } 
+-----------------------------------------------------------------------------
+instance ToJSVal SortBy where
+  toJSVal SortBy{..} = do
+    o <- create
+    forM_ _column $ \x -> set "column" x o
+    forM_ _order $ \x -> set "order" x o
+    toJSVal o
+-----------------------------------------------------------------------------
+instance Semigroup SortBy where
+  SortBy c1 o1 <> SortBy c2 o2 = SortBy (c2 <|> c1) (o2 <|> o1)
+-----------------------------------------------------------------------------
+instance Monoid SortBy where
+  mempty = SortBy Nothing Nothing
+-----------------------------------------------------------------------------
+column, order :: MisoString -> SortBy
+column x = mempty { _column = Just x }
+order x = mempty { _order = Just x }
+-----------------------------------------------------------------------------
+data SearchOptions = SearchOptions
+  { _limit :: Maybe Int
+  , _offset :: Maybe Int
+  , _search :: Maybe MisoString
+  , _sortBy :: Maybe SortBy
+  }
+-----------------------------------------------------------------------------
+instance ToJSVal SearchOptions where
+  toJSVal SearchOptions{..} = do
+    o <- create
+    forM_ _limit $ \x -> set "limit" x o
+    forM_ _offset $ \x -> set "offset" x o
+    forM_ _search $ \x -> set "search" x o
+    forM_ _sortBy $ \x -> set "sortBy" x o
+    toJSVal o
+-----------------------------------------------------------------------------
+instance Semigroup SearchOptions where
+  SearchOptions l1 o1 s1 sb1 <> SearchOptions l2 o2 s2 sb2 =
+    SearchOptions (l2 <|> l1) (o2 <|> o1) (s2 <|> s1) (sb2 <|> sb1)
+-----------------------------------------------------------------------------
+instance Monoid SearchOptions where
+  mempty = SearchOptions Nothing Nothing Nothing Nothing
+-----------------------------------------------------------------------------
+limit, offset :: Int -> SearchOptions
+limit x = mempty { _limit = Just x }
+offset x = mempty { _offset = Just x }
+-----------------------------------------------------------------------------
+search :: MisoString -> SearchOptions
+search x = mempty { _search = Just x }
+-----------------------------------------------------------------------------
+sortBy :: SortBy -> SearchOptions
+sortBy x = mempty { _sortBy = Just x }
+-----------------------------------------------------------------------------
 listAllFiles
   :: MisoString
   -- ^ Bucket identifier
   -> MisoString
   -- ^ The file name
-  -> Value
+  -> SearchOptions
   -- ^ Options
   -> ([Value] -> action)
   -- ^ Response
