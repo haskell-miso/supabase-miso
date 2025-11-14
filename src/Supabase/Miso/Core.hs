@@ -6,6 +6,9 @@ module Supabase.Miso.Core
   ( -- * Functions
     runSupabase
   , runSupabaseFrom
+  , runSupabaseSelect
+  , runSupabaseUpdate
+  , runSupabaseDelete
   , runSupabaseQuery
   , emptyArgs
   , successCallback
@@ -79,6 +82,58 @@ runSupabaseFrom namespace from fnName args successful errorful = do
   args_ <- makeArgs args
   void $ jsg "globalThis" # "runSupabaseFrom" $
     (namespace, from, fnName, args_, successful, errorful)
+-----------------------------------------------------------------------------
+runSupabaseSelect
+  :: ToJSVal args
+  => MisoString
+  -- ^ Table
+  -> MisoString
+  -- ^ Columns
+  -> [args]
+  -- ^ Filters and fetch options
+  -> Function
+  -- ^ successful callback
+  -> Function
+  -- ^ errorful callback
+  -> JSM ()
+runSupabaseSelect table columns args successful errorful = do
+  args_ <- makeArgs args
+  void $ jsg "globalThis" # "runSupabaseSelect" $
+    (table, columns, args_, successful, errorful)
+-----------------------------------------------------------------------------
+runSupabaseUpdate
+  :: ToJSVal args
+  => MisoString
+  -- ^ Table
+  -> Value
+  -- ^ Values
+  -> [args]
+  -- ^ Filters and update options
+  -> Function
+  -- ^ successful callback
+  -> Function
+  -- ^ errorful callback
+  -> JSM ()
+runSupabaseUpdate table values args successful errorful = do
+  args_ <- makeArgs args
+  void $ jsg "globalThis" # "runSupabaseUpdate" $
+    (table, values, args_, successful, errorful)
+-----------------------------------------------------------------------------
+runSupabaseDelete
+  :: ToJSVal args
+  => MisoString
+  -- ^ Table
+  -> [args]
+  -- ^ Filters and delete options
+  -> Function
+  -- ^ successful callback
+  -> Function
+  -- ^ errorful callback
+  -> JSM ()
+runSupabaseDelete table args successful errorful = do
+  args_ <- makeArgs args
+  void $ jsg "globalThis" # "runSupabaseDelete" $
+    (table, args_, successful, errorful)
 -----------------------------------------------------------------------------
 emptyArgs :: [JSVal]
 emptyArgs = []
