@@ -128,8 +128,8 @@ $ cabal build
 ### Database
 
   - [x] [Fetch data](https://supabase.com/docs/reference/javascript/select)
-  - [ ] [Insert data](https://supabase.com/docs/reference/javascript/insert)
-  - [ ] [Update data](https://supabase.com/docs/reference/javascript/update)
-  - [ ] [Upsert data](https://supabase.com/docs/reference/javascript/upsert)
-  - [ ] [Delete data](https://supabase.com/docs/reference/javascript/delete)
+  - [x] [Insert data](https://supabase.com/docs/reference/javascript/insert)
+  - [x] [Update data](https://supabase.com/docs/reference/javascript/update)
+  - [x] [Upsert data](https://supabase.com/docs/reference/javascript/upsert)
+  - [x] [Delete data](https://supabase.com/docs/reference/javascript/delete)
   - [ ] [Call a Postgres function](https://supabase.com/docs/reference/javascript/rpc)
