@@ -14,6 +14,8 @@ module Supabase.Miso.Core
   , successCallback
   , successCallbackFile
   , errorCallback
+  , authStateChangeCallback
+  , subscriptionCallback
   ) where
 -----------------------------------------------------------------------------
 import Data.Aeson
@@ -151,6 +153,27 @@ successCallback sink errorful successful = do
         sink $ errorful (ms msg)
       Success result ->
         sink (successful result)
+-----------------------------------------------------------------------------
+authStateChangeCallback
+  :: (action -> JSM ())
+  -> (MisoString -> Maybe Value -> action)
+  -> JSM Function
+authStateChangeCallback sink callback = do
+  syncCallback1 $ \args -> do
+    event <- valToText =<< (args ! "0")
+    session <- fromJSValUnchecked =<< (args ! "1")
+    sink (callback (ms event) session)
+-----------------------------------------------------------------------------
+subscriptionCallback
+  :: (action -> JSM ())
+  -> (JSM () -> action)
+  -> JSM Function
+subscriptionCallback sink makeAction = do
+  syncCallback1 $ \result -> do
+    -- Extract the unsubscribe function from the subscription object
+    unsubscribeFn <- result ! "unsubscribe"
+    let unsubscribeAction = void $ call unsubscribeFn result ([] :: [JSVal])
+    sink (makeAction unsubscribeAction)
 -----------------------------------------------------------------------------
 successCallbackFile
   :: (action -> JSM ())

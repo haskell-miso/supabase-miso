@@ -5,20 +5,35 @@
 module Supabase.Miso.Auth
   ( -- * Functions
     signUpEmail
+  , signInWithPassword
+  , signOut
+  , resetPasswordForEmail
+  , onAuthStateChange
     -- * Types
-  , User               (..)
-  , AuthData           (..)
-  , Identity           (..)
-  , SignUpPhone        (..)
-  , SignUpEmail        (..)
-  , AppMetadata        (..)
-  , SignUpChannel      (..)
-  , AuthResponse       (..)
-  , SignUpEmailOptions (..)
-  , SignUpPhoneOptions (..)
+  , User                 (..)
+  , AuthData             (..)
+  , Identity             (..)
+  , SignUpPhone          (..)
+  , SignUpEmail          (..)
+  , AppMetadata          (..)
+  , SignUpChannel        (..)
+  , AuthResponse         (..)
+  , SignUpEmailOptions   (..)
+  , SignUpPhoneOptions   (..)
+  , SignInCredentials    (..)
+  , SignOutOptions       (..)
+  , SignOutScope         (..)
+  , ResetPasswordOptions (..)
+  , AuthChangeEvent      (..)
+  , AuthChangeCallback
+  , Subscription         (..)
   -- * Smart constructors
   , defaultSignUpEmailOptions
   , defaultSignUpPhoneOptions
+  , defaultSignOutOptions
+  , defaultResetPasswordOptions
+  -- * Helpers
+  , parseAuthChangeEvent
   ) where
 -----------------------------------------------------------------------------
 import           Data.Hashable
@@ -70,6 +85,65 @@ defaultSignUpEmailOptions = SignUpEmailOptions Nothing Nothing Nothing
 defaultSignUpPhoneOptions :: SignUpPhoneOptions
 defaultSignUpPhoneOptions = SignUpPhoneOptions Nothing Nothing Nothing
 -----------------------------------------------------------------------------
+data SignInCredentials
+  = SignInCredentials
+  { sicEmail :: Email
+  , sicPassword :: Password
+  }
+-----------------------------------------------------------------------------
+data SignOutScope = Global | Local | Others
+  deriving (Show, Eq)
+-----------------------------------------------------------------------------
+instance ToJSVal SignOutScope where
+  toJSVal = \case
+    Global -> toJSVal "global"
+    Local -> toJSVal "local"
+    Others -> toJSVal "others"
+-----------------------------------------------------------------------------
+data SignOutOptions
+  = SignOutOptions
+  { soScope :: Maybe SignOutScope
+  }
+-----------------------------------------------------------------------------
+defaultSignOutOptions :: SignOutOptions
+defaultSignOutOptions = SignOutOptions Nothing
+-----------------------------------------------------------------------------
+data ResetPasswordOptions
+  = ResetPasswordOptions
+  { rpoRedirectTo :: Maybe MisoString
+  , rpoCaptchaToken :: Maybe MisoString
+  }
+-----------------------------------------------------------------------------
+defaultResetPasswordOptions :: ResetPasswordOptions
+defaultResetPasswordOptions = ResetPasswordOptions Nothing Nothing
+-----------------------------------------------------------------------------
+data AuthChangeEvent
+  = InitialSession
+  | SignedIn
+  | SignedOut
+  | PasswordRecovery
+  | TokenRefreshed
+  | UserUpdated
+  | UnknownAuthEvent MisoString  -- For forward compatibility
+  deriving (Show, Eq)
+-----------------------------------------------------------------------------
+parseAuthChangeEvent :: MisoString -> AuthChangeEvent
+parseAuthChangeEvent event = case event of
+  "INITIAL_SESSION" -> InitialSession
+  "SIGNED_IN" -> SignedIn
+  "SIGNED_OUT" -> SignedOut
+  "PASSWORD_RECOVERY" -> PasswordRecovery
+  "TOKEN_REFRESHED" -> TokenRefreshed
+  "USER_UPDATED" -> UserUpdated
+  other -> UnknownAuthEvent other
+-----------------------------------------------------------------------------
+type AuthChangeCallback action = AuthChangeEvent -> Maybe Session -> action
+-----------------------------------------------------------------------------
+data Subscription
+  = Subscription
+  { subUnsubscribe :: JSM ()
+  }
+-----------------------------------------------------------------------------
 data SignUpEmailOptions
   = SignUpEmailOptions
   { sueCaptchaToken :: Maybe MisoString
@@ -119,6 +193,26 @@ instance ToJSVal SignUpEmail where
         set "options" opts_ o
       toJSVal o
 -----------------------------------------------------------------------------
+instance ToJSVal SignInCredentials where
+  toJSVal SignInCredentials {..} = do
+    o <- create
+    set "email" sicEmail o
+    set "password" sicPassword o
+    toJSVal o
+-----------------------------------------------------------------------------
+instance ToJSVal SignOutOptions where
+  toJSVal SignOutOptions {..} = do
+    o <- create
+    forM_ soScope $ \scope -> set "scope" scope o
+    toJSVal o
+-----------------------------------------------------------------------------
+instance ToJSVal ResetPasswordOptions where
+  toJSVal ResetPasswordOptions {..} = do
+    o <- create
+    forM_ rpoRedirectTo $ \redirectTo -> set "redirectTo" redirectTo o
+    forM_ rpoCaptchaToken $ \captchaToken -> set "captchaToken" captchaToken o
+    toJSVal o
+-----------------------------------------------------------------------------
 instance ToJSVal SignUpPhone where
   toJSVal = \case
     SignUpPhone {..} -> do
@@ -163,6 +257,71 @@ signUpPhone args successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
   runSupabase "auth" "signUp" [args] successful_ errorful_
+-----------------------------------------------------------------------------
+signInWithPassword
+  :: SignInCredentials
+  -- ^ Sign in credentials (email and password)
+  -> (AuthResponse -> action)
+  -- ^ Success callback
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent model action
+signInWithPassword credentials successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "signInWithPassword" [credentials] successful_ errorful_
+-----------------------------------------------------------------------------
+signOut
+  :: SignOutOptions
+  -- ^ Sign out options (optional scope)
+  -> (Value -> action)
+  -- ^ Success callback
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent model action
+signOut options successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "signOut" [options] successful_ errorful_
+-----------------------------------------------------------------------------
+resetPasswordForEmail
+  :: Email
+  -- ^ User's email address
+  -> ResetPasswordOptions
+  -- ^ Password reset options (redirectTo, captchaToken)
+  -> (Value -> action)
+  -- ^ Success callback
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent model action
+resetPasswordForEmail email options successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  emailVal <- toJSVal email
+  optionsVal <- toJSVal options
+  runSupabase "auth" "resetPasswordForEmail" [emailVal, optionsVal] successful_ errorful_
+-----------------------------------------------------------------------------
+onAuthStateChange
+  :: (AuthChangeEvent -> Maybe Session -> action)
+  -- ^ Callback function invoked on auth state changes
+  -> (Subscription -> action)
+  -- ^ Success callback with subscription object
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent model action
+onAuthStateChange callback successful errorful = withSink $ \sink -> do
+  -- Wrap the callback to parse the event string and session
+  let wrappedCallback eventStr sessionMaybe = 
+        let parsedSession = case sessionMaybe of
+              Nothing -> Nothing
+              Just val -> case fromJSON val of
+                Success sess -> Just sess
+                Error _ -> Nothing
+        in callback (parseAuthChangeEvent eventStr) parsedSession
+  callback_ <- authStateChangeCallback sink wrappedCallback
+  successful_ <- subscriptionCallback sink (successful . Subscription)
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "onAuthStateChange" [callback_] successful_ errorful_
 -----------------------------------------------------------------------------
 data AuthResponse
   = AuthResponse

@@ -1,8 +1,17 @@
-# Supabase-Miso Database Examples
+# Supabase-Miso Examples
 
-This document provides examples of how to use the database functions in `supabase-miso`.
+This document provides examples of how to use the database and authentication functions in `supabase-miso`.
 
 ## Table of Contents
+
+### Authentication
+
+- [Sign In with Password](#sign-in-with-password)
+- [Sign Out](#sign-out)
+- [Reset Password](#reset-password)
+- [Listen to Auth State Changes](#listen-to-auth-state-changes)
+
+### Database
 
 - [Update Function](#update-function)
 - [Upsert Function](#upsert-function)
@@ -10,6 +19,254 @@ This document provides examples of how to use the database functions in `supabas
 - [Filters](#filters)
 - [Filter Builder Functions](#filter-builder-functions)
 - [Select with Filters](#select-with-filters)
+
+---
+
+## Authentication
+
+### Sign In with Password
+
+The `signInWithPassword` function allows users to sign in with their email and password.
+
+```haskell
+import Supabase.Miso.Auth
+import Data.Aeson (Value)
+
+-- Define your action types
+data Action
+  = SignInSuccess AuthResponse
+  | SignInError MisoString
+  | NoOp
+
+-- Sign in a user
+signInUser :: Email -> MisoString -> Effect parent model Action
+signInUser userEmail password = signInWithPassword
+  (SignInCredentials userEmail (Password password))
+  SignInSuccess
+  SignInError
+
+-- Example usage in your update function
+update' :: Action -> Model -> Effect parent Model Action
+update' action model = case action of
+  SignInSuccess authResponse ->
+    model <# do
+      Console.log "User signed in successfully!"
+      Console.log (show $ arData authResponse)
+      pure NoOp
+
+  SignInError err ->
+    model <# do
+      Console.error ("Sign in failed: " <> err)
+      pure NoOp
+
+  _ -> noEff model
+```
+
+### Sign Out
+
+The `signOut` function signs out the current user.
+
+```haskell
+-- Sign out the current user (global scope - all sessions)
+signOutUser :: Effect parent model Action
+signOutUser = signOut
+  defaultSignOutOptions
+  SignOutSuccess
+  SignOutError
+
+-- Sign out only the current session
+signOutCurrentSession :: Effect parent model Action
+signOutCurrentSession = signOut
+  (SignOutOptions (Just "local"))
+  SignOutSuccess
+  SignOutError
+
+-- Sign out all other sessions except the current one
+signOutOtherSessions :: Effect parent model Action
+signOutOtherSessions = signOut
+  (SignOutOptions (Just Others))
+  SignOutSuccess
+  SignOutError
+
+-- Action handlers
+data Action
+  = SignOutSuccess Value
+  | SignOutError MisoString
+  | NoOp
+
+update' :: Action -> Model -> Effect parent Model Action
+update' action model = case action of
+  SignOutSuccess _ ->
+    model <# do
+      Console.log "User signed out successfully!"
+      pure NoOp
+
+  SignOutError err ->
+    model <# do
+      Console.error ("Sign out failed: " <> err)
+      pure NoOp
+
+  _ -> noEff model
+```
+
+### Reset Password
+
+The `resetPasswordForEmail` function sends a password reset email to the user.
+
+```haskell
+-- Send a password reset email
+resetUserPassword :: Email -> Effect parent model Action
+resetUserPassword userEmail = resetPasswordForEmail
+  userEmail
+  (ResetPasswordOptions
+    (Just "https://myapp.com/update-password")  -- Redirect URL
+    Nothing)                                      -- Captcha token
+  ResetPasswordSuccess
+  ResetPasswordError
+
+-- With all options
+resetUserPasswordWithCaptcha :: Email -> MisoString -> Effect parent model Action
+resetUserPasswordWithCaptcha userEmail captchaToken = resetPasswordForEmail
+  userEmail
+  (ResetPasswordOptions
+    (Just "https://myapp.com/update-password")
+    (Just captchaToken))
+  ResetPasswordSuccess
+  ResetPasswordError
+
+-- Action handlers
+data Action
+  = ResetPasswordSuccess Value
+  | ResetPasswordError MisoString
+  | NoOp
+
+update' :: Action -> Model -> Effect parent Model Action
+update' action model = case action of
+  ResetPasswordSuccess _ ->
+    model <# do
+      Console.log "Password reset email sent!"
+      pure NoOp
+
+  ResetPasswordError err ->
+    model <# do
+      Console.error ("Failed to send reset email: " <> err)
+      pure NoOp
+
+  _ -> noEff model
+```
+
+### Listen to Auth State Changes
+
+The `onAuthStateChange` function allows you to listen for authentication state changes across your application.
+
+```haskell
+import Supabase.Miso.Auth
+
+-- Define your model to store the subscription
+data Model = Model
+  { modelAuthSubscription :: Maybe Subscription
+  , modelCurrentUser :: Maybe User
+  , modelSession :: Maybe Session
+  }
+
+-- Define action types
+data Action
+  = InitAuthListener
+  | AuthStateChanged AuthChangeEvent (Maybe Session)
+  | AuthListenerRegistered Subscription
+  | AuthListenerError MisoString
+  | CleanupAuthListener
+  | NoOp
+
+-- Initialize the auth state listener
+initAuthListener :: Effect parent Model Action
+initAuthListener = onAuthStateChange
+  AuthStateChanged           -- Callback for auth state changes
+  AuthListenerRegistered     -- Success callback with subscription
+  AuthListenerError          -- Error callback
+
+-- Update function to handle auth events
+update' :: Action -> Model -> Effect parent Model Action
+update' action model = case action of
+  InitAuthListener ->
+    model <# initAuthListener
+
+  AuthStateChanged event maybeSession ->
+    let updatedModel = model
+          { modelSession = maybeSession
+          , modelCurrentUser = maybeSession >>= sessionUser
+          }
+    in case event of
+      InitialSession ->
+        updatedModel <# do
+          Console.log "Initial session loaded"
+          pure NoOp
+
+      SignedIn ->
+        updatedModel <# do
+          Console.log "User signed in!"
+          pure NoOp
+
+      SignedOut ->
+        updatedModel { modelCurrentUser = Nothing, modelSession = Nothing } <# do
+          Console.log "User signed out"
+          pure NoOp
+
+      PasswordRecovery ->
+        updatedModel <# do
+          Console.log "Password recovery initiated"
+          pure NoOp
+
+      TokenRefreshed ->
+        updatedModel <# do
+          Console.log "Auth token refreshed"
+          pure NoOp
+
+      UserUpdated ->
+        updatedModel <# do
+          Console.log "User profile updated"
+          pure NoOp
+
+      UnknownAuthEvent eventName ->
+        updatedModel <# do
+          Console.log ("Unknown auth event: " <> eventName)
+          pure NoOp
+
+  AuthListenerRegistered subscription ->
+    model { modelAuthSubscription = Just subscription } <# do
+      Console.log "Auth state listener registered"
+      pure NoOp
+
+  AuthListenerError err ->
+    model <# do
+      Console.error ("Auth listener error: " <> err)
+      pure NoOp
+
+  CleanupAuthListener ->
+    case modelAuthSubscription model of
+      Just sub -> model { modelAuthSubscription = Nothing } <# do
+        subUnsubscribe sub  -- Unsubscribe from auth changes
+        Console.log "Auth listener cleaned up"
+        pure NoOp
+      Nothing -> noEff model
+
+  _ -> noEff model
+
+-- In your initialModel
+initialModel :: Model
+initialModel = Model
+  { modelAuthSubscription = Nothing
+  , modelCurrentUser = Nothing
+  , modelSession = Nothing
+  }
+
+-- Don't forget to cleanup when your app unmounts
+-- You can call CleanupAuthListener in your cleanup logic
+```
+
+---
+
+## Database Functions
 
 ## Update Function
 
