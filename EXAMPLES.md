@@ -77,7 +77,7 @@ signOutUser = signOut
 -- Sign out only the current session
 signOutCurrentSession :: Effect parent model Action
 signOutCurrentSession = signOut
-  (SignOutOptions (Just "local"))
+  (SignOutOptions (Just Local))
   SignOutSuccess
   SignOutError
 
