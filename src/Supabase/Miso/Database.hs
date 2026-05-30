@@ -29,18 +29,18 @@ module Supabase.Miso.Database
   , like
   , ilike
   , is
-  , in_
+  -- , in_
   ) where
 -----------------------------------------------------------------------------
 import           Data.Hashable
-import qualified Data.HashMap.Strict as H
-import           Data.HashMap.Strict (HashMap)
+import qualified Data.Map.Strict as M
+import           Data.Map.Strict (Map)
 import           Data.Time
-import           Data.Aeson
 import           Control.Monad
-import           Language.Javascript.JSaddle hiding (Success)
-import           Miso hiding ((<#))
-import           Miso.FFI
+-----------------------------------------------------------------------------
+import           Miso.JSON
+import           Miso hiding (select)
+import           Miso.FFI hiding (select)
 -----------------------------------------------------------------------------
 import           Supabase.Miso.Core
 -----------------------------------------------------------------------------
@@ -177,7 +177,7 @@ select
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 select table args fetchOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -197,7 +197,7 @@ insert
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 insert table values insertOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -221,7 +221,7 @@ updateTable
   -- ^ Response (requires calling .select() on returned data to get updated rows)
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 updateTable table values filters updateOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -246,7 +246,7 @@ selectWithFilters
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 selectWithFilters table args filters fetchOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -268,7 +268,7 @@ upsert
   -- ^ Response (use .select() to return data)
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 upsert table values upsertOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -290,7 +290,7 @@ deleteFrom
   -- ^ Response (use .select() to return deleted rows)
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 deleteFrom table filters deleteOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -337,7 +337,6 @@ is :: ToJSON a => MisoString -> a -> Filter
 is col val = Filter col Is (toJSON val)
 -----------------------------------------------------------------------------
 -- | In array filter
-in_ :: ToJSON a => MisoString -> [a] -> Filter
-in_ col vals = Filter col In (toJSON vals)
------------------------------------------------------------------------------
+-- in_ :: ToJSON a => MisoString -> [a] -> Filter
+-- in_ col vals = Filter col In (toJSON vals)
 -----------------------------------------------------------------------------

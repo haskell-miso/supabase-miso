@@ -36,13 +36,12 @@ module Supabase.Miso.Storage
 -----------------------------------------------------------------------------
 import           Control.Applicative
 import           Data.Hashable
-import qualified Data.HashMap.Strict as H
-import           Data.HashMap.Strict (HashMap)
-import           Data.Time
-import           Data.Aeson
+import qualified Data.Map.Strict as M
+import           Data.Map.Strict (Map)
 import           Control.Monad
-import           Language.Javascript.JSaddle hiding (Success)
+-----------------------------------------------------------------------------
 import           Miso hiding ((<#), offset)
+import           Miso.JSON
 import           Miso.FFI
 -----------------------------------------------------------------------------
 import           Supabase.Miso.Core
@@ -71,7 +70,7 @@ createBucket
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 createBucket args bucketOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -87,7 +86,7 @@ getBucket
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 getBucket args successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -100,7 +99,7 @@ listBuckets
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 listBuckets successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -115,7 +114,7 @@ updateBucket
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 updateBucket args bucketOptions successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -131,7 +130,7 @@ deleteBucket
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 deleteBucket args successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -146,7 +145,7 @@ emptyBucket
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 emptyBucket args successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -167,7 +166,7 @@ uploadFile
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 uploadFile bucket fileName file options successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -188,7 +187,7 @@ downloadFile
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Errorful
-  -> Effect parent model action
+  -> Effect parent props model action
 downloadFile bucket fileName opts successful errorful = withSink $ \sink -> do
   successful_ <- successCallbackFile sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -263,7 +262,7 @@ listAllFiles
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Errorful
-  -> Effect parent model action
+  -> Effect parent props model action
 listAllFiles bucket fileName options successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -285,7 +284,7 @@ replaceFile
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 replaceFile bucket fileName file options successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -308,7 +307,7 @@ moveFile
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 moveFile bucket target destination opts successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -331,7 +330,7 @@ copyFile
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 copyFile bucket target destination opts successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -350,7 +349,7 @@ deleteFiles
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 deleteFiles bucket files successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -369,7 +368,7 @@ createSignedUrl
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 createSignedUrl bucket file expiry successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -389,7 +388,7 @@ createSignedUrls
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 createSignedUrls bucket files expiry successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -409,7 +408,7 @@ createSignedUploadUrl
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 createSignedUploadUrl bucket file opts successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -433,7 +432,7 @@ uploadToSignedUrl
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 uploadToSignedUrl bucket fileName token file opts successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -455,7 +454,7 @@ getPublicUrl
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 getPublicUrl bucket fileName opts successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful

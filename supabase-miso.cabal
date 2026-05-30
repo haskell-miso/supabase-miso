@@ -28,7 +28,7 @@ library
   hs-source-dirs:
     src
   build-depends:
-    base < 5, miso, jsaddle, aeson, time, unordered-containers, vector, hashable
+    base < 5, miso, time, containers, hashable
   exposed-modules:
     Supabase.Miso.Auth
     Supabase.Miso.Core
@@ -47,7 +47,7 @@ executable app
   main-is:
     Main.hs
   build-depends:
-    base < 5, miso, jsaddle, aeson
+    base < 5, miso
   js-sources:
     js/supabase-miso.js
   hs-source-dirs:
