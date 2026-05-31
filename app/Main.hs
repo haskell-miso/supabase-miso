@@ -1,23 +1,18 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE MultilineStrings    #-}
+{-# LANGUAGE CPP #-}
+-----------------------------------------------------------------------------
 module Main where
-
-import           Control.Monad
-import           Data.Aeson hiding (Object)
-import           Data.Proxy
-import           GHC.Records
-import           GHC.TypeLits
-import           Language.Javascript.JSaddle
-import           Miso
-import qualified Miso.Html.Element as H
-
+-----------------------------------------------------------------------------
+import Miso
+-----------------------------------------------------------------------------
 #ifdef WASM
 foreign export javascript "hs_start" main :: IO ()
 #endif
-
+-----------------------------------------------------------------------------
 main :: IO ()
-main = run $ startApp (component () noop (const "foo"))
+main = startApp defaultEvents (component () noop (\_props () -> "foo"))
 #ifndef WASM
   { scripts =
     [ Module 
@@ -30,3 +25,4 @@ main = run $ startApp (component () noop (const "foo"))
     ]
   }
 #endif
+-----------------------------------------------------------------------------

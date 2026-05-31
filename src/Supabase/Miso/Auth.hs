@@ -36,13 +36,14 @@ module Supabase.Miso.Auth
   , parseAuthChangeEvent
   ) where
 -----------------------------------------------------------------------------
+import           GHC.Generics
 import           Data.Hashable
-import qualified Data.HashMap.Strict as H
-import           Data.HashMap.Strict (HashMap)
+import qualified Data.Map.Strict as M
+import           Data.Map.Strict (Map)
 import           Data.Time
-import           Data.Aeson
 import           Control.Monad
-import           Language.Javascript.JSaddle hiding (Success)
+-----------------------------------------------------------------------------
+import           Miso.JSON
 import           Miso hiding ((<#))
 -----------------------------------------------------------------------------
 import           Supabase.Miso.Core
@@ -63,13 +64,13 @@ data SignUpPhone
   } deriving (Show, Eq)
 -----------------------------------------------------------------------------
 newtype Password = Password MisoString
-  deriving (Show, Eq, ToJSVal)
+  deriving (Show, Eq, ToJSVal, Generic)
 -----------------------------------------------------------------------------
 newtype Phone = Phone MisoString
-  deriving (Show, Eq, ToJSVal)
+  deriving (Show, Eq, ToJSVal, Generic)
 -----------------------------------------------------------------------------
 newtype Email = Email MisoString
-  deriving (Show, Eq, ToJSVal)
+  deriving (Show, Eq, ToJSVal, Generic)
 -----------------------------------------------------------------------------
 data SignUpChannel = SMS | WhatsApp
  deriving (Show, Eq)
@@ -141,7 +142,7 @@ type AuthChangeCallback action = AuthChangeEvent -> Maybe Session -> action
 -----------------------------------------------------------------------------
 data Subscription
   = Subscription
-  { subUnsubscribe :: JSM ()
+  { subUnsubscribe :: IO ()
   }
 -----------------------------------------------------------------------------
 data SignUpEmailOptions
@@ -239,7 +240,7 @@ signUpEmail
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 signUpEmail args successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -252,7 +253,7 @@ signUpPhone
   -- ^ Response
   -> (MisoString -> action)
   -- ^ Error case
-  -> Effect parent model action
+  -> Effect parent props model action
 signUpPhone args successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -265,7 +266,7 @@ signInWithPassword
   -- ^ Success callback
   -> (MisoString -> action)
   -- ^ Error callback
-  -> Effect parent model action
+  -> Effect parent props model action
 signInWithPassword credentials successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -278,7 +279,7 @@ signOut
   -- ^ Success callback
   -> (MisoString -> action)
   -- ^ Error callback
-  -> Effect parent model action
+  -> Effect parent props model action
 signOut options successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -293,7 +294,7 @@ resetPasswordForEmail
   -- ^ Success callback
   -> (MisoString -> action)
   -- ^ Error callback
-  -> Effect parent model action
+  -> Effect parent props model action
 resetPasswordForEmail email options successful errorful = withSink $ \sink -> do
   successful_ <- successCallback sink errorful successful
   errorful_ <- errorCallback sink errorful
@@ -308,7 +309,7 @@ onAuthStateChange
   -- ^ Success callback with subscription object
   -> (MisoString -> action)
   -- ^ Error callback
-  -> Effect parent model action
+  -> Effect parent props model action
 onAuthStateChange callback successful errorful = withSink $ \sink -> do
   -- Wrap the callback to parse the event string and session
   let wrappedCallback eventStr sessionMaybe = 
@@ -345,7 +346,7 @@ data User
   , userPhone            :: MisoString
   , userLastSignInAt     :: Maybe UTCTime
   , userAppMetadata      :: AppMetadata
-  , userUserMetadata     :: HashMap MisoString Value  -- Empty object as arbitrary JSON
+  , userUserMetadata     :: Map MisoString Value  -- Empty object as arbitrary JSON
   , userIdentities       :: [Identity]
   , userCreatedAt        :: UTCTime
   , userUpdatedAt        :: UTCTime
@@ -518,5 +519,11 @@ instance ToJSON Session where
     , "user"          .= sessionUser
     ]
 -----------------------------------------------------------------------------
-deriving instance Hashable MisoString
+instance ToJSON UTCTime where
+  toJSON utcTime = String $ ms (show utcTime)
+-----------------------------------------------------------------------------
+instance FromJSON UTCTime where
+  parseJSON =
+    withText "UTCTime"
+      (parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M:%S" . fromMisoString)
 -----------------------------------------------------------------------------

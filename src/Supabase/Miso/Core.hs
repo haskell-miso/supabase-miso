@@ -18,12 +18,12 @@ module Supabase.Miso.Core
   , subscriptionCallback
   ) where
 -----------------------------------------------------------------------------
-import Data.Aeson
+import Miso.JSON
 import Miso.String
+import Miso.DSL
 import Miso.FFI (syncCallback1, File)
 -----------------------------------------------------------------------------
 import Control.Monad
-import Language.Javascript.JSaddle hiding (Success)
 -----------------------------------------------------------------------------
 -- | runSupabase('auth','signUp', args, successCallback, errorCallback);
 runSupabase
@@ -38,9 +38,9 @@ runSupabase
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
-  -> JSM ()
+  -> IO ()
 runSupabase namespace fnName args successful errorful = do
-  args_ <- makeArgs args
+  args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabase" $
     (namespace, fnName, args_, successful, errorful)
 -----------------------------------------------------------------------------
@@ -58,9 +58,9 @@ runSupabaseQuery
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
-  -> JSM ()
+  -> IO ()
 runSupabaseQuery from fnName args successful errorful = do
-  args_ <- makeArgs args
+  args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabaseQuery" $
     (from, fnName, args_, successful, errorful)
 -----------------------------------------------------------------------------
@@ -79,9 +79,9 @@ runSupabaseFrom
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
-  -> JSM ()
+  -> IO ()
 runSupabaseFrom namespace from fnName args successful errorful = do
-  args_ <- makeArgs args
+  args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabaseFrom" $
     (namespace, from, fnName, args_, successful, errorful)
 -----------------------------------------------------------------------------
@@ -97,9 +97,9 @@ runSupabaseSelect
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
-  -> JSM ()
+  -> IO ()
 runSupabaseSelect table columns args successful errorful = do
-  args_ <- makeArgs args
+  args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabaseSelect" $
     (table, columns, args_, successful, errorful)
 -----------------------------------------------------------------------------
@@ -115,9 +115,9 @@ runSupabaseUpdate
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
-  -> JSM ()
+  -> IO ()
 runSupabaseUpdate table values args successful errorful = do
-  args_ <- makeArgs args
+  args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabaseUpdate" $
     (table, values, args_, successful, errorful)
 -----------------------------------------------------------------------------
@@ -131,9 +131,9 @@ runSupabaseDelete
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
-  -> JSM ()
+  -> IO ()
 runSupabaseDelete table args successful errorful = do
-  args_ <- makeArgs args
+  args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabaseDelete" $
     (table, args_, successful, errorful)
 -----------------------------------------------------------------------------
@@ -142,57 +142,57 @@ emptyArgs = []
 -----------------------------------------------------------------------------
 successCallback
   :: FromJSON t
-  => (action -> JSM ())
+  => (action -> IO ())
   -> (MisoString -> action)
   -> (t -> action)
-  -> JSM Function
-successCallback sink errorful successful = do
-  syncCallback1 $ \result -> do
+  -> IO Function
+successCallback sink errorful successful =
+  Function <$> (syncCallback1 $ \result ->
     fromJSON <$> fromJSValUnchecked result >>= \case
-      Error msg -> do
+      Error msg ->
         sink $ errorful (ms msg)
       Success result ->
-        sink (successful result)
+        sink (successful result))
 -----------------------------------------------------------------------------
 authStateChangeCallback
-  :: (action -> JSM ())
+  :: (action -> IO ())
   -> (MisoString -> Maybe Value -> action)
-  -> JSM Function
+  -> IO Function
 authStateChangeCallback sink callback = do
-  syncCallback1 $ \args -> do
-    event <- valToText =<< (args ! "0")
+  Function <$> (syncCallback1 $ \args -> do
+    event <- fromJSValUnchecked =<< (args ! "0")
     session <- fromJSValUnchecked =<< (args ! "1")
-    sink (callback (ms event) session)
+    sink (callback event session))
 -----------------------------------------------------------------------------
 subscriptionCallback
-  :: (action -> JSM ())
-  -> (JSM () -> action)
-  -> JSM Function
+  :: (action -> IO ())
+  -> (IO () -> action)
+  -> IO Function
 subscriptionCallback sink makeAction = do
-  syncCallback1 $ \result -> do
+  Function <$> (syncCallback1 $ \result -> do
     -- Extract the unsubscribe function from the subscription object
     unsubscribeFn <- result ! "unsubscribe"
     let unsubscribeAction = void $ call unsubscribeFn result ([] :: [JSVal])
-    sink (makeAction unsubscribeAction)
+    sink (makeAction unsubscribeAction))
 -----------------------------------------------------------------------------
 successCallbackFile
-  :: (action -> JSM ())
+  :: (action -> IO ())
   -> (MisoString -> action)
   -> (File -> action)
-  -> JSM Function
-successCallbackFile sink errorful successful = do
-  syncCallback1 $ \result -> do
-    fromJSValUnchecked result >>= sink . successful
+  -> IO Function
+successCallbackFile sink errorful successful =
+  Function <$> (syncCallback1 $ \result ->
+    fromJSValUnchecked result >>= sink . successful)
 -----------------------------------------------------------------------------
 errorCallback
-  :: (action -> JSM ())
+  :: (action -> IO ())
   -> (MisoString -> action)
-  -> JSM Function
+  -> IO Function
 errorCallback sink errorful =
-  syncCallback1 $ \result -> do
+  Function <$> (syncCallback1 $ \result -> do
     fromJSON <$> fromJSValUnchecked result >>= \case
       Error msg -> do
         sink $ errorful (ms msg)
       Success result ->
-        sink (errorful result)
+        sink (errorful result))
 -----------------------------------------------------------------------------
