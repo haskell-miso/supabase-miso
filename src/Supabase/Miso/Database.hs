@@ -39,6 +39,7 @@ import           Data.Time
 import           Control.Monad
 -----------------------------------------------------------------------------
 import           Miso.JSON
+import           Miso.String (MisoString)
 import           Miso hiding (select)
 import           Miso.FFI hiding (select)
 -----------------------------------------------------------------------------
@@ -49,9 +50,9 @@ data Count = Exact | Planned | Estimated
 -----------------------------------------------------------------------------
 instance ToJSVal Count where
   toJSVal = \case
-    Exact -> toJSVal "exact"
-    Planned -> toJSVal "planned"
-    Estimated -> toJSVal "estimated"
+    Exact -> toJSVal ("exact" :: MisoString)
+    Planned -> toJSVal ("planned" :: MisoString)
+    Estimated -> toJSVal ("estimated" :: MisoString)
 -----------------------------------------------------------------------------
 data FetchOptions
   = FetchOptions
@@ -134,16 +135,16 @@ data FilterOperator
 -----------------------------------------------------------------------------
 instance ToJSVal FilterOperator where
   toJSVal = \case
-    Eq    -> toJSVal "eq"
-    Neq   -> toJSVal "neq"
-    Gt    -> toJSVal "gt"
-    Gte   -> toJSVal "gte"
-    Lt    -> toJSVal "lt"
-    Lte   -> toJSVal "lte"
-    Like  -> toJSVal "like"
-    ILike -> toJSVal "ilike"
-    Is    -> toJSVal "is"
-    In    -> toJSVal "in"
+    Eq    -> toJSVal ("eq" :: MisoString)
+    Neq   -> toJSVal ("neq" :: MisoString)
+    Gt    -> toJSVal ("gt" :: MisoString)
+    Gte   -> toJSVal ("gte" :: MisoString)
+    Lt    -> toJSVal ("lt" :: MisoString)
+    Lte   -> toJSVal ("lte" :: MisoString)
+    Like  -> toJSVal ("like" :: MisoString)
+    ILike -> toJSVal ("ilike" :: MisoString)
+    Is    -> toJSVal ("is" :: MisoString)
+    In    -> toJSVal ("in" :: MisoString)
 -----------------------------------------------------------------------------
 -- | Filter for building queries
 -- Example: Filter "id" Eq (toJSON (1 :: Int))

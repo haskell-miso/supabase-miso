@@ -44,6 +44,7 @@ import           Data.Time
 import           Control.Monad
 -----------------------------------------------------------------------------
 import           Miso.JSON
+import           Miso.String (MisoString)
 import           Miso hiding ((<#))
 -----------------------------------------------------------------------------
 import           Supabase.Miso.Core
@@ -77,8 +78,8 @@ data SignUpChannel = SMS | WhatsApp
 -----------------------------------------------------------------------------
 instance ToJSVal SignUpChannel where
   toJSVal = \case
-    SMS -> toJSVal "sms"
-    WhatsApp -> toJSVal "whatsapp"
+    SMS -> toJSVal ("sms" :: MisoString)
+    WhatsApp -> toJSVal ("whatsapp" :: MisoString)
 -----------------------------------------------------------------------------
 defaultSignUpEmailOptions :: SignUpEmailOptions
 defaultSignUpEmailOptions = SignUpEmailOptions Nothing Nothing Nothing
@@ -97,9 +98,9 @@ data SignOutScope = Global | Local | Others
 -----------------------------------------------------------------------------
 instance ToJSVal SignOutScope where
   toJSVal = \case
-    Global -> toJSVal "global"
-    Local -> toJSVal "local"
-    Others -> toJSVal "others"
+    Global -> toJSVal ("global" :: MisoString)
+    Local -> toJSVal ("local" :: MisoString)
+    Others -> toJSVal ("others" :: MisoString)
 -----------------------------------------------------------------------------
 data SignOutOptions
   = SignOutOptions
