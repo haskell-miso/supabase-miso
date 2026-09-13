@@ -12,7 +12,7 @@ foreign export javascript "hs_start" main :: IO ()
 #endif
 -----------------------------------------------------------------------------
 main :: IO ()
-main = startApp defaultEvents (component () noop (\_props () -> "foo"))
+main = startApp defaultEvents (component () noop (\() -> "foo"))
 #ifndef WASM
   { scripts =
     [ Module 
