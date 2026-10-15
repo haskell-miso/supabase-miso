@@ -42,8 +42,16 @@ import           Miso.JSON
 import           Miso.String (MisoString)
 import           Miso hiding (select)
 import           Miso.FFI hiding (select)
+import qualified Miso.DSL
 -----------------------------------------------------------------------------
 import           Supabase.Miso.Core
+-----------------------------------------------------------------------------
+-- | Set a field of an options object only when it has a value: supabase.js
+-- takes a missing option for its default, but null for a value (upsert sent
+-- on_conflict=null, and insert with defaultToNull = null left out the
+-- missing=default header).
+setJust :: ToJSVal a => MisoString -> Maybe a -> Miso.DSL.Object -> IO ()
+setJust key value o = forM_ value $ \v -> set key v o
 -----------------------------------------------------------------------------
 data Count = Exact | Planned | Estimated
   deriving (Show, Eq)
@@ -63,8 +71,8 @@ data FetchOptions
 instance ToJSVal FetchOptions where
   toJSVal FetchOptions {..} = do
     o <- create
-    set "count" foCount o
-    set "head" foHead o
+    setJust "count" foCount o
+    setJust "head" foHead o
     toJSVal o
 -----------------------------------------------------------------------------
 data InsertOptions
@@ -76,8 +84,8 @@ data InsertOptions
 instance ToJSVal InsertOptions where
   toJSVal InsertOptions {..} = do
     o <- create
-    set "count" ioCount o
-    set "defaultToNull" ioDefaultToNull o
+    setJust "count" ioCount o
+    setJust "defaultToNull" ioDefaultToNull o
     toJSVal o
 -----------------------------------------------------------------------------
 data UpdateOptions
@@ -88,7 +96,7 @@ data UpdateOptions
 instance ToJSVal UpdateOptions where
   toJSVal UpdateOptions {..} = do
     o <- create
-    set "count" uoCount o
+    setJust "count" uoCount o
     toJSVal o
 -----------------------------------------------------------------------------
 data UpsertOptions
@@ -102,10 +110,10 @@ data UpsertOptions
 instance ToJSVal UpsertOptions where
   toJSVal UpsertOptions {..} = do
     o <- create
-    set "count" upCount o
-    set "onConflict" upOnConflict o
-    set "ignoreDuplicates" upIgnoreDuplicates o
-    set "defaultToNull" upDefaultToNull o
+    setJust "count" upCount o
+    setJust "onConflict" upOnConflict o
+    setJust "ignoreDuplicates" upIgnoreDuplicates o
+    setJust "defaultToNull" upDefaultToNull o
     toJSVal o
 -----------------------------------------------------------------------------
 data DeleteOptions
@@ -116,7 +124,7 @@ data DeleteOptions
 instance ToJSVal DeleteOptions where
   toJSVal DeleteOptions {..} = do
     o <- create
-    set "count" doCount o
+    setJust "count" doCount o
     toJSVal o
 -----------------------------------------------------------------------------
 -- | Filter operators for building queries
@@ -229,7 +237,7 @@ updateTable table values filters updateOptions successful errorful = withSink $ 
   values_ <- toJSVal values
   updateOptions_ <- toJSVal updateOptions
   filters_ <- toJSVal filters
-  runSupabaseUpdate table values [values_, filters_, updateOptions_] successful_ errorful_
+  runSupabaseUpdate table [values_, filters_, updateOptions_] successful_ errorful_
   
 -----------------------------------------------------------------------------
 -- | https://supabase.com/docs/reference/javascript/select

@@ -107,19 +107,17 @@ runSupabaseUpdate
   :: ToJSVal args
   => MisoString
   -- ^ Table
-  -> Value
-  -- ^ Values
   -> [args]
-  -- ^ Filters and update options
+  -- ^ Values, filters and update options
   -> Function
   -- ^ successful callback
   -> Function
   -- ^ errorful callback
   -> IO ()
-runSupabaseUpdate table values args successful errorful = do
+runSupabaseUpdate table args successful errorful = do
   args_ <- toArgs args
   void $ jsg "globalThis" # "runSupabaseUpdate" $
-    (table, values, args_, successful, errorful)
+    (table, args_, successful, errorful)
 -----------------------------------------------------------------------------
 runSupabaseDelete
   :: ToJSVal args
@@ -154,14 +152,16 @@ successCallback sink errorful successful =
       Success result ->
         sink (successful result))
 -----------------------------------------------------------------------------
+-- | supabase.js calls an auth state change listener with two arguments:
+-- the event, and the session (null when signed out).
 authStateChangeCallback
   :: (action -> IO ())
   -> (MisoString -> Maybe Value -> action)
   -> IO Function
 authStateChangeCallback sink callback = do
-  Function <$> (syncCallback1 $ \args -> do
-    event <- fromJSValUnchecked =<< (args ! "0")
-    session <- fromJSValUnchecked =<< (args ! "1")
+  Function <$> (syncCallback2 $ \event_ session_ -> do
+    event <- fromJSValUnchecked event_
+    session <- fromJSValUnchecked session_
     sink (callback event session))
 -----------------------------------------------------------------------------
 subscriptionCallback
@@ -170,9 +170,11 @@ subscriptionCallback
   -> IO Function
 subscriptionCallback sink makeAction = do
   Function <$> (syncCallback1 $ \result -> do
-    -- Extract the unsubscribe function from the subscription object
-    unsubscribeFn <- result ! "unsubscribe"
-    let unsubscribeAction = void $ call unsubscribeFn result ([] :: [JSVal])
+    -- onAuthStateChange returns { data: { subscription } }; the callback
+    -- gets the data
+    subscription <- result ! "subscription"
+    unsubscribeFn <- subscription ! "unsubscribe"
+    let unsubscribeAction = void $ call unsubscribeFn subscription ([] :: [JSVal])
     sink (makeAction unsubscribeAction))
 -----------------------------------------------------------------------------
 successCallbackFile
@@ -184,15 +186,12 @@ successCallbackFile sink errorful successful =
   Function <$> (syncCallback1 $ \result ->
     fromJSValUnchecked result >>= sink . successful)
 -----------------------------------------------------------------------------
+-- | The glue (js/supabase-miso.js) reports an error as its message.
 errorCallback
   :: (action -> IO ())
   -> (MisoString -> action)
   -> IO Function
 errorCallback sink errorful =
-  Function <$> (syncCallback1 $ \result -> do
-    fromJSON <$> fromJSValUnchecked result >>= \case
-      Error msg -> do
-        sink $ errorful (ms msg)
-      Success result ->
-        sink (errorful result))
+  Function <$> (syncCallback1 $ \result ->
+    sink . errorful =<< fromJSValUnchecked result)
 -----------------------------------------------------------------------------
