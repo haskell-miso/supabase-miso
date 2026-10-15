@@ -5,6 +5,7 @@
 module Supabase.Miso.Auth
   ( -- * Functions
     signUpEmail
+  , signUpPhone
   , signInWithPassword
   , signOut
   , resetPasswordForEmail
@@ -12,7 +13,12 @@ module Supabase.Miso.Auth
     -- * Types
   , User                 (..)
   , AuthData             (..)
+  , Session              (..)
   , Identity             (..)
+  , IdentityData         (..)
+  , Email                (..)
+  , Phone                (..)
+  , Password             (..)
   , SignUpPhone          (..)
   , SignUpEmail          (..)
   , AppMetadata          (..)
@@ -41,6 +47,7 @@ import           Data.Hashable
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Data.Time
+import           Control.Applicative ((<|>))
 import           Control.Monad
 -----------------------------------------------------------------------------
 import           Miso.JSON
@@ -334,7 +341,8 @@ data AuthResponse
 data AuthData
   = AuthData
   { adUser    :: User
-  , adSession :: Session
+  , adSession :: Maybe Session
+  -- ^ Nothing after signing up while the email is not confirmed yet
   } deriving (Show)
 -----------------------------------------------------------------------------
 data User
@@ -366,7 +374,7 @@ data Identity
   , identityUserId       :: MisoString
   , identityIdentityData :: IdentityData
   , identityProvider     :: MisoString
-  , identityLastSignInAt :: UTCTime
+  , identityLastSignInAt :: Maybe UTCTime
   , identityCreatedAt    :: UTCTime
   , identityUpdatedAt    :: UTCTime
   , identityEmail        :: MisoString
@@ -390,39 +398,45 @@ data Session
   , sessionUser         :: User
   } deriving (Show)
 -----------------------------------------------------------------------------
+-- | supabase.js answers { data: { user, session }, error }; the success
+-- callback gets the data, { user, session }.  An object with a "data" field
+-- (the whole answer) is read too.
 instance FromJSON AuthResponse where
-  parseJSON = withObject "AuthResponse" $ \v ->
-    AuthResponse
-      <$> v .: "data"
-      <*> v .: "error"
+  parseJSON = withObject "AuthResponse" $ \v -> do
+    whole <- v .:? "data"
+    case whole of
+      Just authData -> AuthResponse authData <$> v .:? "error"
+      Nothing -> AuthResponse <$> parseJSON (Miso.JSON.Object v) <*> pure Nothing
 -----------------------------------------------------------------------------
 instance FromJSON AuthData where
   parseJSON = withObject "AuthData" $ \v ->
     AuthData
       <$> v .: "user"
-      <*> v .: "session"
+      <*> v .:? "session"
 -----------------------------------------------------------------------------
 instance FromJSON User where
   parseJSON = withObject "User" $ \v ->
+    -- GoTrue leaves out what a user does not have (a phone user has no
+    -- email, an anonymous user no identities)
     User
       <$> v .: "id"
       <*> v .: "aud"
-      <*> v .: "role"
-      <*> v .: "email"
-      <*> v .: "email_confirmed_at"
-      <*> v .: "phone"
-      <*> v .: "last_sign_in_at"
-      <*> v .: "app_metadata"
-      <*> v .: "user_metadata"
-      <*> v .: "identities"
+      <*> v .:? "role" .!= ""
+      <*> v .:? "email" .!= ""
+      <*> v .:? "email_confirmed_at"
+      <*> v .:? "phone" .!= ""
+      <*> v .:? "last_sign_in_at"
+      <*> v .:? "app_metadata" .!= AppMetadata "" []
+      <*> v .:? "user_metadata" .!= M.empty
+      <*> v .:? "identities" .!= []
       <*> v .: "created_at"
       <*> v .: "updated_at"
 -----------------------------------------------------------------------------
 instance FromJSON AppMetadata where
   parseJSON = withObject "AppMetadata" $ \v ->
     AppMetadata
-      <$> v .: "provider"
-      <*> v .: "providers"
+      <$> v .:? "provider" .!= ""
+      <*> v .:? "providers" .!= []
 -----------------------------------------------------------------------------
 instance FromJSON Identity where
   parseJSON = withObject "Identity" $ \v ->
@@ -432,17 +446,17 @@ instance FromJSON Identity where
       <*> v .: "user_id"
       <*> v .: "identity_data"
       <*> v .: "provider"
-      <*> v .: "last_sign_in_at"
+      <*> v .:? "last_sign_in_at"
       <*> v .: "created_at"
       <*> v .: "updated_at"
-      <*> v .: "email"
+      <*> v .:? "email" .!= ""
 -----------------------------------------------------------------------------
 instance FromJSON IdentityData where
   parseJSON = withObject "IdentityData" $ \v ->
     IdentityData
-      <$> v .: "email"
-      <*> v .: "email_verified"
-      <*> v .: "phone_verified"
+      <$> v .:? "email" .!= ""
+      <*> v .:? "email_verified" .!= False
+      <*> v .:? "phone_verified" .!= False
       <*> v .: "sub"
 -----------------------------------------------------------------------------
 instance FromJSON Session where
@@ -491,7 +505,7 @@ instance ToJSON AppMetadata where
 -----------------------------------------------------------------------------
 instance ToJSON Identity where
   toJSON Identity {..} = object
-    [ "identity_id"     .= identityId
+    [ "identity_id"     .= identityIdentityId
     , "id"              .= identityId
     , "user_id"         .= identityUserId
     , "identity_data"   .= identityIdentityData
@@ -520,11 +534,15 @@ instance ToJSON Session where
     , "user"          .= sessionUser
     ]
 -----------------------------------------------------------------------------
+-- | Timestamps are ISO 8601, as Supabase writes them:
+-- 2026-10-13T12:00:00.123456Z, or with an offset (+00:00).
 instance ToJSON UTCTime where
-  toJSON utcTime = String $ ms (show utcTime)
+  toJSON = String . ms . formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ"
 -----------------------------------------------------------------------------
 instance FromJSON UTCTime where
-  parseJSON =
-    withText "UTCTime"
-      (parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M:%S" . fromMisoString)
+  parseJSON = withText "UTCTime" $ \t ->
+    let s = fromMisoString t
+        utc = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" s
+        zoned = zonedTimeToUTC <$> parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" s
+    in  maybe (fail ("not an ISO 8601 time: " ++ s)) pure (utc <|> zoned)
 -----------------------------------------------------------------------------

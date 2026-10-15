@@ -25,7 +25,7 @@ main = run $ startApp myComponent
   { scripts =
      [ Module
         """
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm'
         const supabase = createClient('https://<app-id>.supabase.co', '<anon-key>');
         globalThis['supabase'] = supabase;
         console.log('Supabase Instance: ', supabase)

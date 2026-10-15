@@ -1,133 +1,75 @@
-// dmj: usage like: runSupabase('auth','signUp', args, successCallback, errorCallback);
-globalThis["runSupabase"] = function (
-  namespace,
-  fnName,
-  args,
-  successful,
-  errorful
-) {
-  globalThis["supabase"][namespace][fnName](...args).then(({ data, error }) => {
-    if (data) successful(data);
-    if (error) errorful(error);
-  });
-};
-globalThis["runSupabaseFrom"] = function (
-  namespace,
-  fromArg,
-  fnName,
-  args,
-  successful,
-  errorful
-) {
-  globalThis["supabase"][namespace]
-    .from(fromArg)
-    [fnName](...args)
-    .then(({ data, error }) => {
-      if (data) successful(data);
-      if (error) errorful(error);
-    });
-};
+// The glue between supabase-miso and supabase.js (globalThis.supabase).
+//
+// Every call reports back through two callbacks: successful(data) when the
+// result has no error (data can be null: an insert without .select(), or
+// signOut), and errorful(message) when it has one, when its promise is
+// rejected (a network error), or when the call throws.  A result that is not
+// a promise (getPublicUrl, onAuthStateChange) is reported the same way.
 
-// Handle update queries with filters
-globalThis["runSupabaseUpdate"] = function (
-  table,
-  values,
-  filters,
-  options,
-  successful,
-  errorful
-) {
-  let query = globalThis["supabase"].from(table).update(values, options);
+function errorMessage(e) {
+  if (e && typeof e.message === "string") return e.message;
+  return String(e);
+}
 
-  // Apply each filter sequentially
-  filters.forEach((filter) => {
+function settle(run, successful, errorful) {
+  let result;
+  try {
+    result = run();
+  } catch (e) {
+    errorful(errorMessage(e));
+    return;
+  }
+  Promise.resolve(result).then(
+    (r) => {
+      if (r && r.error) errorful(errorMessage(r.error));
+      else successful(r && r.data !== undefined ? r.data : null);
+    },
+    (e) => errorful(errorMessage(e))
+  );
+}
+
+function applyFilters(query, filters) {
+  (filters || []).forEach((filter) => {
     query = query[filter.operator](filter.column, filter.value);
   });
+  return query;
+}
 
-  query.then(({ data, error }) => {
-    if (data) successful(data);
-    if (error) errorful(error);
-  });
+// runSupabase('auth', 'signUp', args, successful, errorful)
+globalThis["runSupabase"] = function (namespace, fnName, args, successful, errorful) {
+  settle(() => globalThis["supabase"][namespace][fnName](...args), successful, errorful);
 };
 
-// Helper function for running select queries with filters
-globalThis.runSupabaseSelect = function (
-  table,
-  columns,
-  args,
-  successCallback,
-  errorCallback
-) {
-  let query = globalThis.supabase.from(table).select(columns);
-
-  const filters = args[0] || [];
-  const fetchOptions = args[1] || {};
-
-  // Apply filters
-  filters.forEach((filter) => {
-    query = query[filter.operator](filter.column, filter.value);
-  });
-
-  // Apply fetch options if provided
-  if (fetchOptions.count) {
-    query = query.count(fetchOptions.count);
-  }
-  if (fetchOptions.head) {
-    query = query.head();
-  }
-
-  query.then((result) => {
-    if (result.error) {
-      errorCallback(result.error.message);
-    } else {
-      successCallback(result.data);
-    }
-  });
+// runSupabaseFrom('storage', bucket, 'upload', args, successful, errorful)
+globalThis["runSupabaseFrom"] = function (namespace, fromArg, fnName, args, successful, errorful) {
+  settle(() => globalThis["supabase"][namespace].from(fromArg)[fnName](...args), successful, errorful);
 };
 
-// Helper function for running delete queries with filters
-globalThis.runSupabaseDelete = function (
-  table,
-  args,
-  successCallback,
-  errorCallback
-) {
-  let query = globalThis.supabase.from(table).delete();
-
-  const filters = args[0] || [];
-  const deleteOptions = args[1] || {};
-
-  // Apply filters
-  filters.forEach((filter) => {
-    query = query[filter.operator](filter.column, filter.value);
-  });
-
-  // Apply delete options if provided
-  if (deleteOptions.count) {
-    query = query.count(deleteOptions.count);
-  }
-
-  query.then((result) => {
-    if (result.error) {
-      errorCallback(result.error.message);
-    } else {
-      successCallback(result.data);
-    }
-  });
+// runSupabaseQuery(table, 'insert', args, successful, errorful)
+globalThis["runSupabaseQuery"] = function (from, fnName, args, successful, errorful) {
+  settle(() => globalThis["supabase"].from(from)[fnName](...args), successful, errorful);
 };
 
-globalThis["runSupabaseQuery"] = function (
-  from,
-  fnName,
-  args,
-  successful,
-  errorful
-) {
-  globalThis["supabase"]
-    ["from"](from)
-    [fnName](...args)
-    .then(({ data, error }) => {
-      if (data) successful(data);
-      if (error) errorful(error);
-    });
+// runSupabaseSelect(table, columns, [filters, { count, head }], successful, errorful)
+globalThis["runSupabaseSelect"] = function (table, columns, args, successful, errorful) {
+  settle(() => {
+    const [filters, options] = args;
+    return applyFilters(globalThis["supabase"].from(table).select(columns, options || {}), filters);
+  }, successful, errorful);
+};
+
+// runSupabaseUpdate(table, [values, filters, { count }], successful, errorful)
+globalThis["runSupabaseUpdate"] = function (table, args, successful, errorful) {
+  settle(() => {
+    const [values, filters, options] = args;
+    return applyFilters(globalThis["supabase"].from(table).update(values, options || {}), filters);
+  }, successful, errorful);
+};
+
+// runSupabaseDelete(table, [filters, { count }], successful, errorful)
+globalThis["runSupabaseDelete"] = function (table, args, successful, errorful) {
+  settle(() => {
+    const [filters, options] = args;
+    return applyFilters(globalThis["supabase"].from(table).delete(options || {}), filters);
+  }, successful, errorful);
 };

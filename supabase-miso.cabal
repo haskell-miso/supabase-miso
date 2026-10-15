@@ -27,6 +27,9 @@ common wasm
 library
   hs-source-dirs:
     src
+  -- the glue the library calls (globalThis.runSupabase, ...), for every app
+  js-sources:
+    js/supabase-miso.js
   build-depends:
     base < 5, miso, time, containers, hashable
   exposed-modules:
@@ -48,8 +51,6 @@ executable app
     Main.hs
   build-depends:
     base < 5, miso
-  js-sources:
-    js/supabase-miso.js
   hs-source-dirs:
     app
   ghc-options:
