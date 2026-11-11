@@ -32,7 +32,6 @@ module Supabase.Miso.Database
   -- , in_
   ) where
 -----------------------------------------------------------------------------
-import           Data.Hashable
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Data.Time
