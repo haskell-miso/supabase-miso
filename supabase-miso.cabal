@@ -31,7 +31,7 @@ library
   js-sources:
     js/supabase-miso.js
   build-depends:
-    base < 5, miso, time, containers, hashable
+    base < 5, miso, time, containers
   exposed-modules:
     Supabase.Miso.Auth
     Supabase.Miso.Core

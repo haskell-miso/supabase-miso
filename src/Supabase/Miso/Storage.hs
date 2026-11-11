@@ -35,7 +35,6 @@ module Supabase.Miso.Storage
   ) where
 -----------------------------------------------------------------------------
 import           Control.Applicative
-import           Data.Hashable
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Control.Monad

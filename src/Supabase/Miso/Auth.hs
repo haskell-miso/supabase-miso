@@ -43,7 +43,6 @@ module Supabase.Miso.Auth
   ) where
 -----------------------------------------------------------------------------
 import           GHC.Generics
-import           Data.Hashable
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Data.Time
