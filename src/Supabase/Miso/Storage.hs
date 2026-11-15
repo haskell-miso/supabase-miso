@@ -37,7 +37,7 @@ module Supabase.Miso.Storage
 import           Control.Applicative
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
-import           Control.Monad
+import           Data.Foldable (forM_)
 -----------------------------------------------------------------------------
 import           Miso hiding ((<#), offset)
 import           Miso.JSON

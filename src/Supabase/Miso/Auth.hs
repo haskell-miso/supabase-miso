@@ -47,7 +47,7 @@ import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Data.Time
 import           Control.Applicative ((<|>))
-import           Control.Monad
+import           Data.Foldable (forM_)
 -----------------------------------------------------------------------------
 import           Miso.JSON
 import           Miso.String (MisoString)
@@ -169,22 +169,22 @@ data SignUpPhoneOptions
 instance ToJSVal SignUpPhoneOptions where
   toJSVal SignUpPhoneOptions {..} = do
     o <- create
-    forM supCaptchaToken $ \captchaToken_ ->
+    forM_ supCaptchaToken $ \captchaToken_ ->
       set "captchaToken" captchaToken_ o
-    forM supChannel $ \email_ ->
+    forM_ supChannel $ \email_ ->
       set "channel" email_ o
-    forM supSignUpData $ \data_ ->
+    forM_ supSignUpData $ \data_ ->
       flip (set "data") o =<< toJSVal data_
     toJSVal o
 -----------------------------------------------------------------------------
 instance ToJSVal SignUpEmailOptions where
   toJSVal SignUpEmailOptions {..} = do
     o <- create
-    forM sueCaptchaToken $ \captchaToken_ ->
+    forM_ sueCaptchaToken $ \captchaToken_ ->
       set "captchaToken" captchaToken_ o
-    forM sueEmailRedirectTo $ \email_ ->
+    forM_ sueEmailRedirectTo $ \email_ ->
       set "emailRedirectTo" email_ o
-    forM sueSignUpData $ \data_ ->
+    forM_ sueSignUpData $ \data_ ->
       flip (set "data") o =<< toJSVal data_
     toJSVal o
 -----------------------------------------------------------------------------

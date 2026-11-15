@@ -47,6 +47,11 @@ library
 executable app
   import:
     wasm
+  -- an example for GHC's wasm backend; with MicroHs, miso build builds it
+  -- (from miso.yml), and a project that depends on this package needs only
+  -- the library
+  if impl(mhs)
+    buildable: False
   main-is:
     Main.hs
   build-depends:
