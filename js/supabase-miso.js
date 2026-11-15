@@ -28,9 +28,12 @@ function settle(run, successful, errorful) {
   );
 }
 
+// The filters, and the modifiers order and limit, in their order.
 function applyFilters(query, filters) {
   (filters || []).forEach((filter) => {
-    query = query[filter.operator](filter.column, filter.value);
+    if (filter.operator === "order") query = query.order(filter.column, { ascending: filter.value });
+    else if (filter.operator === "limit") query = query.limit(filter.value);
+    else query = query[filter.operator](filter.column, filter.value);
   });
   return query;
 }

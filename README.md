@@ -77,23 +77,59 @@ dependencies:
     rev: <a commit>
 ```
 
+### Example app
+
+[`app/Main.hs`](app/Main.hs) is a notes app that uses each part of the library:
+
+- **Auth**: sign up and sign in with an email and a password, a magic link,
+  anonymously, or with GitHub. The session is read when the page loads
+  (`getSession`) and followed with `onAuthStateChange`.
+- **Database**: a `notes` table that row level security keeps to each user:
+  `selectWithFilters` (an `ilike` search, `orderBy`, `limitTo`), `insert`,
+  `updateTable`, `deleteFrom`.
+- **Storage**: a file for each note, in a private bucket, in the folder of
+  the user's id, read through signed URLs.
+
+[`supabase/`](supabase) has its table, policies and bucket
+([`migrations`](supabase/migrations)), and the local stack's settings
+([`config.toml`](supabase/config.toml)). To run it locally, with
+[Docker](https://docs.docker.com/get-docker/), the
+[Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
+and the [miso tool](https://github.com/haskell-miso/cli):
+
+```bash
+$ supabase start    # Postgres, auth, storage, and a mail server, in Docker
+$ miso dev          # builds the app, and serves it at http://localhost:8000
+```
+
+- The emails (sign-up confirmations, magic links) go to the local mail
+  server, at http://127.0.0.1:54324.
+- The app has to be served at `localhost:8000` (or `127.0.0.1:8000`), where
+  `config.toml` lets auth send users back to.
+- GitHub sign-in needs an OAuth app of your own: see the comment of
+  `[auth.external.github]` in `config.toml`. Without one the button says so.
+- [`static/config.js`](static/config.js) says which Supabase project the app
+  uses: the local one, by default. For a project on supabase.com, put its URL
+  and its publishable (anon) key there, and push the table and the bucket to
+  it with `supabase link` and `supabase db push`.
+
 ### API Coverage
 
 #### Auth
 
 - [x] [Create a new user](https://supabase.com/docs/reference/javascript/auth-signup)
 - [x] [Listen to auth events](https://supabase.com/docs/reference/javascript/auth-onauthstatechange)
-- [ ] [Create an anonymous user](https://supabase.com/docs/reference/javascript/auth-signinanonymously)
+- [x] [Create an anonymous user](https://supabase.com/docs/reference/javascript/auth-signinanonymously)
 - [x] [Sign in a user](https://supabase.com/docs/reference/javascript/auth-signinwithpassword)
 - [ ] [Sign in with ID Token](https://supabase.com/docs/reference/javascript/auth-signinwithidtoken)
-- [ ] [Sign in a user through OTP](https://supabase.com/docs/reference/javascript/auth-signinwithotp)
-- [ ] [Sign in a user through OAuth](https://supabase.com/docs/reference/javascript/auth-signinwithoauth)
+- [x] [Sign in a user through OTP](https://supabase.com/docs/reference/javascript/auth-signinwithotp)
+- [x] [Sign in a user through OAuth](https://supabase.com/docs/reference/javascript/auth-signinwithoauth)
 - [ ] [Sign in a user through SSO](https://supabase.com/docs/reference/javascript/auth-signinwithsso)
 - [ ] [Get user claims from verified JWT](https://supabase.com/docs/reference/javascript/auth-getclaims)
 - [x] [Sign out a user](https://supabase.com/docs/reference/javascript/auth-signout)
 - [x] [Send a password reset request](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail)
 - [ ] [Verify and log in through OTP](https://supabase.com/docs/reference/javascript/auth-verifyotp)
-- [ ] [Retrieve a session](https://supabase.com/docs/reference/javascript/auth-getsession)
+- [x] [Retrieve a session](https://supabase.com/docs/reference/javascript/auth-getsession)
 - [ ] [Retrieve a new session](https://supabase.com/docs/reference/javascript/auth-refreshsession)
 - [ ] [Retrieve a user](https://supabase.com/docs/reference/javascript/auth-getuser)
 - [ ] [Update a user](https://supabase.com/docs/reference/javascript/auth-getuser)
@@ -147,4 +183,6 @@ dependencies:
 - [x] [Update data](https://supabase.com/docs/reference/javascript/update)
 - [x] [Upsert data](https://supabase.com/docs/reference/javascript/upsert)
 - [x] [Delete data](https://supabase.com/docs/reference/javascript/delete)
+- [x] [Order the results](https://supabase.com/docs/reference/javascript/order) (`orderBy`, in the list of filters)
+- [x] [Limit the number of rows](https://supabase.com/docs/reference/javascript/limit) (`limitTo`, in the list of filters)
 - [ ] [Call a Postgres function](https://supabase.com/docs/reference/javascript/rpc)

@@ -30,6 +30,8 @@ module Supabase.Miso.Database
   , ilike
   , is
   -- , in_
+  , orderBy
+  , limitTo
   ) where
 -----------------------------------------------------------------------------
 import qualified Data.Map.Strict as M
@@ -138,6 +140,8 @@ data FilterOperator
   | ILike  -- ^ Case-insensitive pattern matching
   | Is     -- ^ Is (for null checks)
   | In     -- ^ In array
+  | Order  -- ^ Sort by the column (the value: ascending), not a filter: see 'orderBy'
+  | Limit  -- ^ At most this many rows, not a filter: see 'limitTo'
   deriving (Show, Eq)
 -----------------------------------------------------------------------------
 instance ToJSVal FilterOperator where
@@ -152,6 +156,8 @@ instance ToJSVal FilterOperator where
     ILike -> toJSVal ("ilike" :: MisoString)
     Is    -> toJSVal ("is" :: MisoString)
     In    -> toJSVal ("in" :: MisoString)
+    Order -> toJSVal ("order" :: MisoString)
+    Limit -> toJSVal ("limit" :: MisoString)
 -----------------------------------------------------------------------------
 -- | Filter for building queries
 -- Example: Filter "id" Eq (toJSON (1 :: Int))
@@ -347,4 +353,18 @@ is col val = Filter col Is (toJSON val)
 -- | In array filter
 -- in_ :: ToJSON a => MisoString -> [a] -> Filter
 -- in_ col vals = Filter col In (toJSON vals)
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/order
+--
+-- Sorts the rows by a column (True: ascending).  It goes in the list of
+-- filters, which are applied in order.
+orderBy :: MisoString -> Bool -> Filter
+orderBy col ascending = Filter col Order (toJSON ascending)
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/limit
+--
+-- At most this many rows.  It goes in the list of filters.
+limitTo :: Int -> Filter
+limitTo n = Filter "" Limit (toJSON n)
 -----------------------------------------------------------------------------

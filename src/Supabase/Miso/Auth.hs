@@ -9,6 +9,10 @@ module Supabase.Miso.Auth
   , signInWithPassword
   , signOut
   , resetPasswordForEmail
+  , signInWithOtp
+  , signInAnonymously
+  , signInWithOAuth
+  , getSession
   , onAuthStateChange
     -- * Types
   , User                 (..)
@@ -30,6 +34,8 @@ module Supabase.Miso.Auth
   , SignOutOptions       (..)
   , SignOutScope         (..)
   , ResetPasswordOptions (..)
+  , OtpOptions           (..)
+  , OAuthOptions         (..)
   , AuthChangeEvent      (..)
   , AuthChangeCallback
   , Subscription         (..)
@@ -38,6 +44,8 @@ module Supabase.Miso.Auth
   , defaultSignUpPhoneOptions
   , defaultSignOutOptions
   , defaultResetPasswordOptions
+  , defaultOtpOptions
+  , defaultOAuthOptions
   -- * Helpers
   , parseAuthChangeEvent
   ) where
@@ -308,6 +316,117 @@ resetPasswordForEmail email options successful errorful = withSink $ \sink -> do
   emailVal <- toJSVal email
   optionsVal <- toJSVal options
   runSupabase "auth" "resetPasswordForEmail" [emailVal, optionsVal] successful_ errorful_
+-----------------------------------------------------------------------------
+-- | Options of 'signInWithOtp'
+data OtpOptions
+  = OtpOptions
+  { otpEmailRedirectTo  :: Maybe MisoString
+  -- ^ Where the link in the email goes (a URL of the auth redirect URLs)
+  , otpShouldCreateUser :: Maybe Bool
+  -- ^ Sign up an email that has no user yet (supabase.js: yes)
+  } deriving (Show, Eq)
+-----------------------------------------------------------------------------
+defaultOtpOptions :: OtpOptions
+defaultOtpOptions = OtpOptions Nothing Nothing
+-----------------------------------------------------------------------------
+-- | Options of 'signInWithOAuth'
+data OAuthOptions
+  = OAuthOptions
+  { oauthRedirectTo :: Maybe MisoString
+  -- ^ Where the provider sends the user back to (a URL of the auth redirect URLs)
+  , oauthScopes     :: Maybe MisoString
+  -- ^ Scopes to ask the provider for, separated by spaces
+  } deriving (Show, Eq)
+-----------------------------------------------------------------------------
+defaultOAuthOptions :: OAuthOptions
+defaultOAuthOptions = OAuthOptions Nothing Nothing
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-signinwithotp
+--
+-- Emails a magic link (and a one-time code) to sign in with.  The session
+-- comes when the user follows the link, through 'onAuthStateChange'.
+signInWithOtp
+  :: Email
+  -- ^ The user's email address
+  -> OtpOptions
+  -- ^ Options (emailRedirectTo, shouldCreateUser)
+  -> (Value -> action)
+  -- ^ Success callback: the email was sent
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+signInWithOtp email OtpOptions {..} successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  opts <- create
+  forM_ otpEmailRedirectTo $ \x -> set "emailRedirectTo" x opts
+  forM_ otpShouldCreateUser $ \x -> set "shouldCreateUser" x opts
+  o <- create
+  set "email" email o
+  set "options" opts o
+  runSupabase "auth" "signInWithOtp" [o] successful_ errorful_
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-signinanonymously
+--
+-- Signs in as a new user with no email or password (the project must allow
+-- anonymous sign-ins).
+signInAnonymously
+  :: (AuthResponse -> action)
+  -- ^ Success callback
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+signInAnonymously successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "signInAnonymously" emptyArgs successful_ errorful_
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-signinwithoauth
+--
+-- Sends the browser to the provider (\"github\", \"google\", ...) to sign in.
+-- It comes back to the redirect URL, where supabase.js reads the session
+-- (see 'onAuthStateChange').
+signInWithOAuth
+  :: MisoString
+  -- ^ The provider, as supabase.js names it (\"github\", \"google\", ...)
+  -> OAuthOptions
+  -- ^ Options (redirectTo, scopes)
+  -> (Value -> action)
+  -- ^ Success callback (before the browser leaves for the provider)
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+signInWithOAuth provider OAuthOptions {..} successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful successful
+  errorful_ <- errorCallback sink errorful
+  opts <- create
+  forM_ oauthRedirectTo $ \x -> set "redirectTo" x opts
+  forM_ oauthScopes $ \x -> set "scopes" x opts
+  o <- create
+  set "provider" provider o
+  set "options" opts o
+  runSupabase "auth" "signInWithOAuth" [o] successful_ errorful_
+-----------------------------------------------------------------------------
+-- | https://supabase.com/docs/reference/javascript/auth-getsession
+--
+-- The session supabase.js has (from local storage), refreshed if it has
+-- expired; Nothing when signed out.
+getSession
+  :: (Maybe Session -> action)
+  -- ^ Success callback
+  -> (MisoString -> action)
+  -- ^ Error callback
+  -> Effect parent props model action
+getSession successful errorful = withSink $ \sink -> do
+  successful_ <- successCallback sink errorful (successful . unSessionData)
+  errorful_ <- errorCallback sink errorful
+  runSupabase "auth" "getSession" emptyArgs successful_ errorful_
+-----------------------------------------------------------------------------
+-- | The data of getSession: { session }
+newtype SessionData = SessionData { unSessionData :: Maybe Session }
+-----------------------------------------------------------------------------
+instance FromJSON SessionData where
+  parseJSON = withObject "SessionData" $ \v -> SessionData <$> v .:? "session"
 -----------------------------------------------------------------------------
 onAuthStateChange
   :: (AuthChangeEvent -> Maybe Session -> action)

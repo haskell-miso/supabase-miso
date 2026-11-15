@@ -55,7 +55,7 @@ executable app
   main-is:
     Main.hs
   build-depends:
-    base < 5, miso
+    base < 5, miso, supabase-miso, containers
   hs-source-dirs:
     app
   ghc-options:
