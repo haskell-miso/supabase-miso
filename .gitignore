@@ -29,3 +29,10 @@ coverage/
 
 # haddocks
 haddocks/
+
+# miso (MicroHs)
+.miso/
+dist-mcabal/
+public/
+.mhscache
+.miso-build.log

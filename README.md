@@ -61,6 +61,22 @@ update = \case
 $ cabal build
 ```
 
+With [MicroHs](https://github.com/augustss/MicroHs), using the [miso tool](https://github.com/haskell-miso/cli):
+
+```bash
+$ miso build
+```
+
+A miso project can depend on it in its `miso.yml`:
+
+```yaml
+dependencies:
+  - miso
+  - name: supabase-miso
+    git: https://github.com/haskell-miso/supabase-miso
+    rev: <a commit>
+```
+
 ### API Coverage
 
 #### Auth

@@ -23,3 +23,13 @@ jobs:
 
       - name: Build using Nix
         run: nix develop --command bash -c "cabal build"
+
+  # MicroHs, with the miso tool: miso build of miso.yml (the library, and the
+  # app to WebAssembly)
+  microhs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: haskell-miso/setup-miso@v1

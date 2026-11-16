@@ -1,0 +1,23 @@
+# For the miso tool (https://github.com/haskell-miso/cli), which builds with
+# MicroHs: miso build builds the library and the example app.  A project that
+# depends on supabase-miso (from git:) builds its library: section.
+name: supabase-miso
+version: 0.1.0.0
+synopsis: A Haskell miso client library for supabase.js
+dependencies: [miso, time, containers]
+library:
+  source-dirs: [src]
+  exposed-modules:
+    - Supabase.Miso.Auth
+    - Supabase.Miso.Core
+    - Supabase.Miso.Database
+    - Supabase.Miso.Edge
+    - Supabase.Miso.Realtime
+    - Supabase.Miso.Storage
+  # the glue the library calls (globalThis.runSupabase, ...), for every app
+  js-sources: [js/supabase-miso.js]
+executables:
+  app:
+    main: Main
+    source-dirs: [app]
+    target: browser

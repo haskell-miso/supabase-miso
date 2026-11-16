@@ -35,7 +35,7 @@ module Supabase.Miso.Database
 import qualified Data.Map.Strict as M
 import           Data.Map.Strict (Map)
 import           Data.Time
-import           Control.Monad
+import           Data.Foldable (forM_)
 -----------------------------------------------------------------------------
 import           Miso.JSON
 import           Miso.String (MisoString)
@@ -334,11 +334,11 @@ lte col val = Filter col Lte (toJSON val)
 -----------------------------------------------------------------------------
 -- | Like pattern matching filter
 like :: MisoString -> MisoString -> Filter
-like col pattern = Filter col Like (toJSON pattern)
+like col pat = Filter col Like (toJSON pat)
 -----------------------------------------------------------------------------
 -- | Case-insensitive like pattern matching filter
 ilike :: MisoString -> MisoString -> Filter
-ilike col pattern = Filter col ILike (toJSON pattern)
+ilike col pat = Filter col ILike (toJSON pat)
 -----------------------------------------------------------------------------
 -- | Is (for null/boolean checks)
 is :: ToJSON a => MisoString -> a -> Filter

@@ -23,7 +23,7 @@ import Miso.String
 import Miso.DSL
 import Miso.FFI (syncCallback1, File)
 -----------------------------------------------------------------------------
-import Control.Monad
+import Control.Monad (void)
 -----------------------------------------------------------------------------
 -- | runSupabase('auth','signUp', args, successCallback, errorCallback);
 runSupabase
